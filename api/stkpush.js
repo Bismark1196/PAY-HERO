@@ -9,7 +9,6 @@ export default async function handler(req, res) {
   try {
     let { phone, amount } = req.body;
 
-    // Validation
     if (!phone || !amount) {
       return res.status(400).json({
         success: false,
@@ -17,19 +16,28 @@ export default async function handler(req, res) {
       });
     }
 
-    // Format phone number
     phone = phone.replace(/\s+/g, "");
 
     if (phone.startsWith("07")) {
       phone = "254" + phone.substring(1);
     }
 
-    // Create Basic Auth token
+    const username = process.env.PAYHERO_USERNAME;
+    const password = process.env.PAYHERO_PASSWORD;
+    const channelId = process.env.PAYHERO_ACCOUNT_ID;
+
+    // Check env variables
+    if (!username || !password || !channelId) {
+      return res.status(500).json({
+        success: false,
+        message: "Missing environment variables",
+      });
+    }
+
     const auth = Buffer.from(
-      `${process.env.PAYHERO_USERNAME}:${process.env.PAYHERO_PASSWORD}`
+      `${username}:${password}`
     ).toString("base64");
 
-    // Send request to PayHero
     const response = await fetch(
       "https://backend.payhero.co.ke/api/v2/payments",
       {
@@ -41,7 +49,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           amount: Number(amount),
           phone_number: phone,
-          channel_id: Number(process.env.PAYHERO_ACCOUNT_ID),
+          channel_id: Number(channelId),
           provider: "m-pesa",
           external_reference: `REF-${Date.now()}`,
           callback_url: "https://example.com/callback",
@@ -49,35 +57,26 @@ export default async function handler(req, res) {
       }
     );
 
-    // Parse response safely
-    const text = await response.text();
+    const rawText = await response.text();
+
+    console.log("PAYHERO RAW:", rawText);
 
     let data;
 
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(rawText);
     } catch {
-      data = {
-        raw: text,
-      };
+      data = { raw: rawText };
     }
 
-    console.log("PAYHERO STATUS:", response.status);
-    console.log("PAYHERO RESPONSE:", data);
+    return res.status(response.status).json(data);
 
-    // Return full PayHero response
-    return res.status(response.status).json({
-      success: response.ok,
-      status: response.status,
-      data,
-    });
   } catch (error) {
     console.error("SERVER ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: error.message,
+      message: error.message,
     });
   }
 }

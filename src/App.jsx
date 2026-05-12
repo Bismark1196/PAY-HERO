@@ -22,16 +22,38 @@ export default function App() {
         }),
       });
 
-      const data = await response.json();
+      // Read raw response first
+      const text = await response.text();
+
+      console.log("RAW RESPONSE:", text);
+
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+
+      console.log("PARSED DATA:", data);
 
       if (response.ok) {
-        setMessage("STK Push sent successfully.");
+        setMessage(
+          data?.message ||
+            data?.data?.message ||
+            "STK Push sent successfully."
+        );
       } else {
-        setMessage(data.message || "Payment failed.");
+        setMessage(
+          data?.message ||
+            data?.data?.message ||
+            "Payment failed."
+        );
       }
     } catch (error) {
-      console.error(error);
-      setMessage("Something went wrong.");
+      console.error("FRONTEND ERROR:", error);
+
+      setMessage(error.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -39,11 +61,11 @@ export default function App() {
 
   return (
     <div style={container}>
-      <h2 style={title}>PayHero STK Push</h2>
+      <h1 style={title}>PayHero STK Push</h1>
 
       <input
         type="text"
-        placeholder="2547XXXXXXXX"
+        placeholder="07XXXXXXXX"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
         style={input}
@@ -65,17 +87,22 @@ export default function App() {
         {loading ? "Processing..." : "Pay Now"}
       </button>
 
-      {message && <p>{message}</p>}
+      {message && (
+        <div style={messageStyle}>
+          {message}
+        </div>
+      )}
     </div>
   );
 }
 
 const container = {
   maxWidth: "400px",
-  margin: "50px auto",
+  margin: "60px auto",
   background: "#fff",
   padding: "24px",
   borderRadius: "12px",
+  boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
   display: "flex",
   flexDirection: "column",
   gap: "12px",
@@ -98,4 +125,9 @@ const button = {
   background: "#16a34a",
   color: "#fff",
   cursor: "pointer",
+};
+
+const messageStyle = {
+  marginTop: "10px",
+  textAlign: "center",
 };
