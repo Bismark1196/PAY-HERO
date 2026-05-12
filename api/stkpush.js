@@ -7,8 +7,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { phone, amount } = req.body;
+    let { phone, amount } = req.body;
 
+    // Validation
     if (!phone || !amount) {
       return res.status(400).json({
         success: false,
@@ -16,10 +17,19 @@ export default async function handler(req, res) {
       });
     }
 
+    // Format phone number
+    phone = phone.replace(/\s+/g, "");
+
+    if (phone.startsWith("07")) {
+      phone = "254" + phone.substring(1);
+    }
+
+    // Create Basic Auth token
     const auth = Buffer.from(
       `${process.env.PAYHERO_USERNAME}:${process.env.PAYHERO_PASSWORD}`
     ).toString("base64");
 
+    // Send request to PayHero
     const response = await fetch(
       "https://backend.payhero.co.ke/api/v2/payments",
       {
@@ -39,15 +49,35 @@ export default async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
+    // Parse response safely
+    const text = await response.text();
 
-    return res.status(response.status).json(data);
+    let data;
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = {
+        raw: text,
+      };
+    }
+
+    console.log("PAYHERO STATUS:", response.status);
+    console.log("PAYHERO RESPONSE:", data);
+
+    // Return full PayHero response
+    return res.status(response.status).json({
+      success: response.ok,
+      status: response.status,
+      data,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("SERVER ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Internal server error",
+      error: error.message,
     });
   }
 }
