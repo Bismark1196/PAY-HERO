@@ -3,27 +3,35 @@ import { useState } from "react";
 export default function App() {
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
-  const [ref, setRef] = useState("");
   const [msg, setMsg] = useState("");
+  const [ref, setRef] = useState("");
 
   const sendSTK = async () => {
-    setMsg("Sending STK...");
+    setMsg("Processing STK...");
 
-    const res = await fetch("/api/stkpush", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, amount }),
-    });
+    try {
+      const res = await fetch("/api/stkpush", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, amount }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    console.log(data);
+      console.log("RESPONSE:", data);
 
-    if (data.success) {
-      setRef(data.data?.reference || "N/A");
-      setMsg("STK sent. Check your phone.");
-    } else {
-      setMsg("Payment failed.");
+      if (data.success) {
+        setRef(data.data?.data?.reference || "N/A");
+        setMsg("STK sent successfully. Check your phone.");
+      } else {
+        setMsg(
+          data.data?.raw
+            ? `Failed: ${data.data.raw}`
+            : "Payment failed"
+        );
+      }
+    } catch (err) {
+      setMsg("Error: " + err.message);
     }
   };
 
@@ -47,7 +55,7 @@ export default function App() {
       <button onClick={sendSTK}>Send STK</button>
 
       <p>{msg}</p>
-      <p>{ref && `Ref: ${ref}`}</p>
+      {ref && <p>Ref: {ref}</p>}
     </div>
   );
 }
