@@ -9,6 +9,13 @@ export default async function handler(req, res) {
   try {
     const { phone, amount } = req.body;
 
+    if (!phone || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and amount are required",
+      });
+    }
+
     const auth = Buffer.from(
       `${process.env.PAYHERO_USERNAME}:${process.env.PAYHERO_PASSWORD}`
     ).toString("base64");
@@ -27,21 +34,20 @@ export default async function handler(req, res) {
           channel_id: Number(process.env.PAYHERO_ACCOUNT_ID),
           provider: "m-pesa",
           external_reference: `REF-${Date.now()}`,
-          callback_url:
-            "https://your-domain.vercel.app/api/payment-callback",
+          callback_url: "https://example.com/callback",
         }),
       }
     );
 
     const data = await response.json();
 
-    return res.status(200).json(data);
+    return res.status(response.status).json(data);
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
       success: false,
-      message: "Payment failed",
+      message: "Server error",
     });
   }
 }
